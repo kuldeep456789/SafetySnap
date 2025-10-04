@@ -1,0 +1,10 @@
+project_id = "vzujbgssyikmsaefdmhr"
+
+[functions.detect-ppe]
+verify_jwt = true
+
+[functions.get-analytics]
+verify_jwt = true
+
+[functions.update-settings]
+verify_jwt = true
