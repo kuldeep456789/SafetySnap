@@ -33,18 +33,19 @@ const Home = () => {
         <div className="container mx-auto px-4 py-20 relative">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <div className="inline-block px-4 py-2 bg-primary/10 border border-primary/20 rounded-full">
+              {/* <div className="inline-block px-4 py-2 bg-primary/10 border border-primary/20 rounded-full">
                 <span className="text-sm font-medium text-primary">AI-Powered Safety Detection</span>
-              </div>
+              </div> */}
               <h2 className="text-5xl font-bold leading-tight">
-                Ensure Workplace Safety with{" "}
+                Safety with{" "}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                   Real-Time PPE Detection
                 </span>
               </h2>
               <p className="text-xl text-muted-foreground">
-                Advanced AI technology to detect and verify personal protective equipment compliance in real-time,
-                keeping your workforce safe and compliant.
+                Safety PPE detection uses AI to instantly identify helmets, vests, and other protective gear, ensuring worker safety in real-time. 
+                YOLOv11 delivers lightning-fast, accurate detection with clear visuals, counts, and alerts for missing equipment. 
+                It powers smart dashboards, compliance analytics, and can run on-site or on edge devices for seamless, proactive safety monitoring.
               </p>
               <div className="flex gap-4">
                 <Link to="/upload">

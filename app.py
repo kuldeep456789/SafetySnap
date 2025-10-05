@@ -11,9 +11,7 @@ from flask import Flask, request, jsonify, send_file, Response
 from ultralytics import YOLO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
-
 app = Flask(__name__)
-
 # -----------------------------
 # YOLOv11 PPE Detection Model
 # -----------------------------
@@ -23,7 +21,6 @@ model = YOLO("yolo11n.pt")  # Replace with your PPE model path
 # Analytics Storage
 # -----------------------------
 analytics_data = []  # frame-wise PPE counts
-
 # -----------------------------
 # Helper Functions
 # -----------------------------
