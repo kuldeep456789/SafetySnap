@@ -1,28 +1,13 @@
-# Core backend
-Flask==2.3.4
-flask-cors==3.0.10
-
-# YOLO / Ultralytics
-ultralytics==8.0.210
-
-# Image and video processing
-opencv-python-headless==4.8.1.78
-Pillow==10.0.0
-numpy==1.26.0
-
-# Data handling
-pandas==2.1.0
-
-# Optional visualization (for plots/graphs)
-matplotlib==3.8.0
-altair==5.0.1
-seaborn==0.12.2
-
-# Async / Requests if needed
-requests==2.32.1
-
-# For environment management
-python-dotenv==1.0.0
-
-# Optional: for video streaming or file uploads
-werkzeug==2.3.8
+Flask
+flask-cors
+ultralytics
+opencv-python-headless
+Pillow
+numpy
+pandas
+matplotlib
+altair
+seaborn
+requests
+python-dotenv
+werkzeug
