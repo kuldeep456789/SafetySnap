@@ -26,7 +26,7 @@ const Home = () => {
           </div>
         </div>
       </nav>
-
+      
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/5" />

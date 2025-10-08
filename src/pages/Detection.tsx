@@ -1,224 +1,184 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { Shield, CheckCircle, XCircle, AlertTriangle, Download } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Shield, Upload as UploadIcon } from "lucide-react";
+import { Line } from "react-chartjs-2";
+import "chart.js/auto";
+import axios from "axios";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Define the Detection type
 interface Detection {
-  id: string;
-  label: string;
-  confidence: number;
-  bbox?: { x: number; y: number; width: number; height: number };
-  status: "compliant" | "violation" | "partial";
+  frame: number;
+  total_detections: number;
 }
 
-const Detection = () => {
-  const [detections, setDetections] = useState<Detection[]>([]);
-  const [selectedImage, setSelectedImage] = useState<string>(
-    "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=800&q=80"
-  );
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+const BACKEND_URL = "http://127.0.0.1:5000";
 
-  const BACKEND_URL = "https://safetysnap-backend.onrender.com"; // 🔁 Replace with your actual Render backend URL
+const Upload: React.FC = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [resultImages, setResultImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [liveMode, setLiveMode] = useState<boolean>(false);
+  const [analyticsData, setAnalyticsData] = useState<Detection[]>([]);
 
-  // Fetch detections from backend
-  useEffect(() => {
-    const fetchDetections = async () => {
+  // Handle file input
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) setFiles([...files, ...Array.from(e.target.files)]);
+  };
+
+  // Handle image detection
+  const handleDetect = async () => {
+    if (files.length === 0) return toast.error("Upload at least one file");
+    setLoading(true);
+    const results: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append("file", files[i]);
       try {
-        setLoading(true);
-        const response = await axios.get(`${BACKEND_URL}/detect`);
-        setDetections(response.data.detections || []);
+        const res = await axios.post(`${BACKEND_URL}/detect`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        results.push("data:image/jpeg;base64," + res.data.image);
       } catch (err) {
         console.error(err);
-        setError("Failed to load detection results. Please try again.");
-      } finally {
-        setLoading(false);
+        toast.error("Detection failed");
+      }
+    }
+
+    setResultImages(results);
+    setLoading(false);
+    toast.success("Detection completed!");
+  };
+
+  // Toggle live mode
+  const toggleLiveMode = () => setLiveMode(!liveMode);
+
+  // Fetch live analytics every 2 seconds
+  useEffect(() => {
+    if (!liveMode) return;
+
+    const fetchAnalytics = async () => {
+      try {
+        const res = await axios.get<Detection[]>(`${BACKEND_URL}/live_analytics`);
+        setAnalyticsData(res.data);
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
       }
     };
-    fetchDetections();
-  }, []);
 
-  const compliantCount = detections.filter((d) => d.status === "compliant").length;
-  const violationCount = detections.filter((d) => d.status === "violation").length;
-  const partialCount = detections.filter((d) => d.status === "partial").length;
+    fetchAnalytics();
+    const interval = setInterval(fetchAnalytics, 2000);
+    return () => clearInterval(interval);
+  }, [liveMode]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "compliant":
-        return "border-success";
-      case "violation":
-        return "border-destructive";
-      case "partial":
-        return "border-warning";
-      default:
-        return "border-muted";
-    }
+  // Prepare chart data
+  const chartData = {
+    labels: analyticsData.map((d) => `Frame ${d.frame}`),
+    datasets: [
+      {
+        label: "Total Detections",
+        data: analyticsData.map((d) => d.total_detections),
+        borderColor: "rgb(99, 102, 241)",
+        backgroundColor: "rgba(99, 102, 241, 0.2)",
+        fill: true,
+        tension: 0.3,
+      },
+    ],
   };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "compliant":
-        return (
-          <Badge className="bg-success text-success-foreground">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Compliant
-          </Badge>
-        );
-      case "violation":
-        return (
-          <Badge className="bg-destructive text-destructive-foreground">
-            <XCircle className="h-3 w-3 mr-1" />
-            Violation
-          </Badge>
-        );
-      case "partial":
-        return (
-          <Badge className="bg-warning text-warning-foreground">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Partial
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (loading) return <div className="p-10 text-center text-lg">🔍 Detecting... Please wait.</div>;
-  if (error) return <div className="p-10 text-center text-destructive">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background p-6">
+      {/* Navbar */}
+      <nav className="border-b bg-card/50 backdrop-blur-md sticky top-0 z-50 mb-8">
+        <div className="container mx-auto flex justify-between items-center py-4">
           <Link to="/" className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              SafetySnap
-            </h1>
+            <h1 className="text-2xl font-bold text-primary">SafetySnap</h1>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/upload">
-              <Button variant="ghost">Upload</Button>
-            </Link>
-            <Link to="/analytics">
-              <Button variant="ghost">Analytics</Button>
-            </Link>
-            <Link to="/settings">
-              <Button variant="ghost">Settings</Button>
-            </Link>
+          <div className="flex gap-4">
+            <Button variant="ghost" onClick={() => setLiveMode(false)}>
+              Upload
+            </Button>
+            <Button variant="ghost" onClick={() => setLiveMode(true)}>
+              Live
+            </Button>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-4xl font-bold mb-2">Detection Results</h2>
-              <p className="text-lg text-muted-foreground">AI-powered PPE compliance analysis</p>
-            </div>
-            <Button className="bg-gradient-to-r from-primary to-accent">
-              <Download className="mr-2 h-4 w-4" />
-              Export Report
+      {/* Upload Mode */}
+      {!liveMode && (
+        <>
+          <div className="border-2 border-dashed rounded-lg p-6 mb-6 text-center">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileInput}
+              className="hidden"
+              id="fileUpload"
+            />
+            <label htmlFor="fileUpload" className="cursor-pointer flex flex-col items-center gap-2">
+              <UploadIcon className="h-12 w-12 text-blue-600 animate-bounce" />
+              <span className="font-semibold">Click to upload or drag & drop</span>
+            </label>
+          </div>
+
+          <Button onClick={handleDetect} disabled={loading || files.length === 0}>
+            {loading ? "Detecting..." : "Detect Uploaded"}
+          </Button>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            {resultImages.map((img, i) => (
+              <img key={i} src={img} alt="Detection result" className="rounded-xl shadow-lg" />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Live Mode */}
+      {liveMode && (
+        <div className="flex flex-col items-center mt-6">
+          <img
+            src={`${BACKEND_URL}/live`}
+            alt="Live Stream"
+            className="rounded-lg shadow-lg max-w-3xl border"
+          />
+
+          <div className="mt-6 w-full max-w-3xl bg-card rounded-lg shadow p-4">
+            <Line data={chartData} />
+          </div>
+
+          <div className="flex gap-4 mt-6">
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={toggleLiveMode}>
+              Stop Live
+            </Button>
+
+            <Button className="bg-green-600 hover:bg-green-700 text-white">
+              <a href={`${BACKEND_URL}/export/csv`} download>
+                Download CSV Report
+              </a>
             </Button>
           </div>
 
-          {/* Stats Overview */}
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="border-2 border-success/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-success">
-                  <CheckCircle className="h-5 w-5" />
-                  Compliant
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold">{compliantCount}</p>
-                <p className="text-sm text-muted-foreground">PPE items detected</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-warning/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-warning">
-                  <AlertTriangle className="h-5 w-5" />
-                  Partial
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold">{partialCount}</p>
-                <p className="text-sm text-muted-foreground">Low confidence items</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-destructive/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <XCircle className="h-5 w-5" />
-                  Violations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold">{violationCount}</p>
-                <p className="text-sm text-muted-foreground">Missing PPE items</p>
-              </CardContent>
-            </Card>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+            {analyticsData.map((d) => (
+              <Card key={d.frame}>
+                <CardHeader>
+                  <CardTitle>Frame {d.frame}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  Total Detections: {d.total_detections}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-
-          {/* Detection Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detection Details</CardTitle>
-              <CardDescription>Comprehensive breakdown of all detections</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {detections.map((detection) => (
-                  <div
-                    key={detection.id}
-                    className={`p-4 rounded-lg border-2 ${getStatusColor(detection.status)} bg-card`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">{detection.label}</h4>
-                      {getStatusBadge(detection.status)}
-                    </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      {detection.confidence > 0 && (
-                        <>
-                          <p>Confidence: {(detection.confidence * 100).toFixed(1)}%</p>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                detection.status === "compliant"
-                                  ? "bg-success"
-                                  : detection.status === "partial"
-                                  ? "bg-warning"
-                                  : "bg-destructive"
-                              }`}
-                              style={{ width: `${detection.confidence * 100}%` }}
-                            />
-                          </div>
-                        </>
-                      )}
-                      {detection.status === "violation" && (
-                        <p className="text-destructive font-medium">Required PPE missing</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default Detection;
+export default Upload;
